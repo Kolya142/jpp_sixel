@@ -1,0 +1,47 @@
+#undef u0
+#undef str
+#undef ret
+#undef pi
+#define U0 void
+#include <opencv2/opencv.hpp>
+#define ret return 0
+#define u0 void
+#!use:math.h
+#!mod:sixel.h
+
+cv::VideoCapture cap = cv::VideoCapture(0, cv::CAP_V4L2)
+if !cap.isOpened() {
+    pf("Error: Could not open camera.\n")
+    return 1
+}
+const U32 s = 900
+SixelImage* si = si_init(s, s/6)
+
+float t = 0
+
+pf("\x1b[2J")
+cv::Mat frame
+
+$!lop(i32;i;0..s) {
+    $!lop(i32;j;0..s) {
+        si_pset(si, i, j, 1)
+        si_cset(si, i, j, 5)
+    }
+}
+
+$!loop {
+    cap.read(frame)
+    if (frame.empty()) {
+        pf("Error: Cout no read this frame\n")
+        return 2
+    }
+    $!lop(i32;i;0..s) {
+        $!lop(i32;j;0..s/6) {
+            U8 *p = frame.ptr(j*6, i)
+            si_cset(si, i, j*6, rgb_to_16(p[2], p[1], p[0]))
+        }
+    }
+    t+=.01f
+    pf("\x1b[HSimple demo with sixel:\n")
+    si_print(si, stdout)
+}

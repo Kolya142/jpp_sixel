@@ -1,0 +1,141 @@
+#!mod:sixel.h
+
+U16 rgb_to_16(U16 R, U16 G, U16 B) {
+    U8 rl = R < 128
+    U8 rb = R > 128
+
+    U8 gl = G < 128
+    U8 gb = G > 128
+
+    U8 bl = B < 128
+    U8 bb = B > 128
+
+    U8 qd = 256 / 4
+    U8 aqd = qd * 2
+    U8 bqd = qd * 3
+
+    U8 rlq = R < aqd
+    U8 rbq = R > 0
+
+    U8 glq = G < aqd
+    U8 gbq = G > 0
+
+    U8 blq = B < aqd
+    U8 bbq = B > 0
+
+    if rl && gl && bb {
+        ret 1
+    }
+
+    if rb && gl && bl {
+        ret 2
+    }
+    
+    if rl && gb && bl {
+        ret 3
+    }
+
+    if rb && gl && bb {
+        ret 4
+    }
+
+    if rl && gb && bb {
+        ret 5
+    }
+
+    if rb && gb && bl {
+        ret 6
+    }
+
+    if R > aqd && G > aqd && bl > aqd && R < bqd && G < bqd && bl < bqd {
+        ret 7
+    }
+
+    if rbq && gbq && bbq && R < aqd && G < aqd && bl < aqd {
+        ret 8
+    }
+
+    if rlq && glq && bbq {
+        ret 9
+    }
+
+    if rbq && glq && blq {
+        ret 10
+    }
+    
+    if rlq && gbq && blq {
+        ret 11
+    }
+
+    if rbq && glq && bbq {
+        ret 12
+    }
+
+    if rlq && gbq && bbq {
+        ret 13
+    }
+
+    if rbq && gbq && blq {
+        ret 14
+    }
+
+    if R > bqd && G > bqd && B > bqd {
+        ret 15
+    }
+
+    ret 16
+}
+
+SixelImage *si_init(U16 w, U16 h) {
+    SixelImage* si = alloc(SixelImage, 1)
+    si->image = alloc(U8, w*h)
+    si->color = alloc(U8, w*h)
+    $!lop(i32;i;0..w*h) {
+        si->image[i] = 0
+        si->color[i] = 3
+    }
+    si->width = w
+    si->height = h
+    ret si
+}
+
+void si_pset(SixelImage *self, U16 x, U16 y, U8 c) {
+    U16 bm = 0b1 << (y % 6)
+    if c {
+        self->image[y/6*self->width+x] |= bm
+    }
+    else {
+        self->image[y/6*self->width+x] &= ~bm
+    }
+}
+
+void si_cset(SixelImage *self, U16 x, U16 y, U8 c) {
+    self->color[y/6*self->width+x] = c
+}
+
+U8 si_pget(SixelImage *self, U16 x, U16 y) {
+    U16 bm = 0b1 << (y % 6)
+    ret (self->image[y/6*self->width+x] & ~bm) != 0
+}
+
+U8 si_print(SixelImage *self, FILE *out) {
+    if !out {
+        ret 1
+    }
+    fprintf(out, "\x1bPq")
+    U8 color = 3
+    fprintf(out, "#%d", color)
+    $!lop(U32;y;0..self->height) { 
+        $!lop(U32;x;0..self->width) {
+            U32 i = x+y*(U32)self->width
+            if color != self->color[i] {
+                color = self->color[i]
+                fprintf(out, "#%d", color)
+            }
+            putc(0x3f+self->image[i], out)
+        }
+        putc('-', out)
+    }
+    fprintf(out, "\x1b\\");
+    ret 0;
+}

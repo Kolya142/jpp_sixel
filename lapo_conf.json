@@ -1,0 +1,7 @@
+{
+    "main": "main.jpp",
+    "include": "modules",
+    "temp_folder": "temp",
+    "output_elf": "program.elf",
+    "cargs": "-lm $(pkg-config --cflags --libs opencv4)"
+}
